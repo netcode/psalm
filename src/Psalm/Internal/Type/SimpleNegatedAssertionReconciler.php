@@ -390,6 +390,7 @@ class SimpleNegatedAssertionReconciler extends Reconciler
                     $is_equality
                 );
 
+                $did_remove_type = true;
                 $existing_var_type->bustCache();
             }
         }
@@ -434,7 +435,7 @@ class SimpleNegatedAssertionReconciler extends Reconciler
         bool $is_equality
     ) : Type\Union {
         $old_var_type_string = $existing_var_type->getId();
-        $did_remove_type = false;
+        $did_remove_type = $existing_var_type->hasScalar();
 
         if ($existing_var_type->hasType('false')) {
             $did_remove_type = true;
@@ -452,6 +453,7 @@ class SimpleNegatedAssertionReconciler extends Reconciler
                     $is_equality
                 );
 
+                $did_remove_type = true;
                 $existing_var_type->bustCache();
             }
         }

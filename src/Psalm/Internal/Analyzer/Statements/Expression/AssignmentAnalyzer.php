@@ -9,7 +9,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAss
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\StaticPropertyAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
-use Psalm\Internal\Analyzer\TypeAnalyzer;
+use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Exception\DocblockParseException;
@@ -210,6 +210,9 @@ class AssignmentAnalyzer
                         }
                     }
 
+                    $parent_nodes = $context->vars_in_scope[$var_comment->var_id]->parent_nodes ?? [];
+                    $var_comment_type->parent_nodes = $parent_nodes;
+
                     $context->vars_in_scope[$var_comment->var_id] = $var_comment_type;
                 } catch (\UnexpectedValueException $e) {
                     if (IssueBuffer::accepts(
@@ -284,6 +287,7 @@ class AssignmentAnalyzer
             }
 
             $assign_value_type = $comment_type;
+            $assign_value_type->parent_nodes = $temp_assign_value_type->parent_nodes ?? [];
         } elseif (!$assign_value_type) {
             $assign_value_type = $assign_value
                 ? ($statements_analyzer->node_data->getType($assign_value) ?: Type::getMixed())
@@ -380,7 +384,7 @@ class AssignmentAnalyzer
                 && isset($context->byref_constraints[$var_id])
                 && ($outer_constraint_type = $context->byref_constraints[$var_id]->type)
             ) {
-                if (!TypeAnalyzer::isContainedBy(
+                if (!UnionTypeComparator::isContainedBy(
                     $codebase,
                     $assign_value_type,
                     $outer_constraint_type,
@@ -1053,6 +1057,30 @@ class AssignmentAnalyzer
                 $statements_analyzer->getSuppressedIssues()
             )) {
                 // fall through
+            }
+        } elseif ($context->mutation_free
+            && !$context->collect_mutations
+            && !$context->collect_initializations
+            && $stmt->var instanceof PhpParser\Node\Expr\PropertyFetch
+        ) {
+            $lhs_var_id = ExpressionIdentifier::getArrayVarId(
+                $stmt->var->var,
+                $statements_analyzer->getFQCLN(),
+                $statements_analyzer
+            );
+
+            if (isset($context->vars_in_scope[$lhs_var_id])
+                && !$context->vars_in_scope[$lhs_var_id]->allow_mutations
+            ) {
+                if (IssueBuffer::accepts(
+                    new ImpurePropertyAssignment(
+                        'Cannot assign to a property from a mutation-free context',
+                        new CodeLocation($statements_analyzer, $stmt)
+                    ),
+                    $statements_analyzer->getSuppressedIssues()
+                )) {
+                    // fall through
+                }
             }
         }
 

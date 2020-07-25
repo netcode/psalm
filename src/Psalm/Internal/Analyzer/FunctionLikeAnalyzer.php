@@ -10,6 +10,8 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeCollector;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
+use Psalm\Internal\Type\Comparator\TypeComparisonResult;
+use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
@@ -505,6 +507,17 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
         }
 
+        if ($storage->signature_return_type && $storage->signature_return_type_location) {
+            list($start, $end) = $storage->signature_return_type_location->getSelectionBounds();
+
+            $codebase->analyzer->addOffsetReference(
+                $this->getFilePath(),
+                $start,
+                $end,
+                (string) $storage->signature_return_type
+            );
+        }
+
         if (ReturnTypeAnalyzer::checkReturnType(
             $this->function,
             $project_analyzer,
@@ -576,17 +589,6 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
         }
 
-        if ($storage->signature_return_type && $storage->signature_return_type_location) {
-            list($start, $end) = $storage->signature_return_type_location->getSelectionBounds();
-
-            $codebase->analyzer->addOffsetReference(
-                $this->getFilePath(),
-                $start,
-                $end,
-                (string) $storage->signature_return_type
-            );
-        }
-
         if ($this->function instanceof Closure
             || $this->function instanceof ArrowFunction
         ) {
@@ -632,7 +634,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 if (($storage->return_type === $storage->signature_return_type)
                     && (!$storage->return_type
                         || $storage->return_type->hasMixed()
-                        || TypeAnalyzer::isContainedBy(
+                        || UnionTypeComparator::isContainedBy(
                             $codebase,
                             $closure_return_type,
                             $storage->return_type
@@ -687,7 +689,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $input_type = new Type\Union([new TNamedObject($expected_exception)]);
                     $container_type = new Type\Union([new TNamedObject('Exception'), new TNamedObject('Throwable')]);
 
-                    if (!TypeAnalyzer::isContainedBy($codebase, $input_type, $container_type)) {
+                    if (!UnionTypeComparator::isContainedBy($codebase, $input_type, $container_type)) {
                         if (IssueBuffer::accepts(
                             new \Psalm\Issue\InvalidThrow(
                                 'Class supplied for @throws ' . $expected_exception
@@ -977,13 +979,17 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $signature_type_location = $function_param->signature_type_location;
 
             if ($signature_type && $signature_type_location && $signature_type->hasObjectType()) {
+                $referenced_type = $signature_type;
+                if ($referenced_type->isNullable()) {
+                    $referenced_type = clone $referenced_type;
+                    $referenced_type->removeType('null');
+                }
                 list($start, $end) = $signature_type_location->getSelectionBounds();
-
                 $codebase->analyzer->addOffsetReference(
                     $this->getFilePath(),
                     $start,
                     $end,
-                    (string) $signature_type
+                    (string) $referenced_type
                 );
             }
 
@@ -1102,7 +1108,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             if ($signature_type) {
                 $union_comparison_result = new TypeComparisonResult();
 
-                if (!TypeAnalyzer::isContainedBy(
+                if (!UnionTypeComparator::isContainedBy(
                     $codebase,
                     $param_type,
                     $signature_type,
@@ -1152,7 +1158,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                 if ($default_type
                     && !$default_type->hasMixed()
-                    && !TypeAnalyzer::isContainedBy(
+                    && !UnionTypeComparator::isContainedBy(
                         $codebase,
                         $default_type,
                         $param_type,
@@ -1509,7 +1515,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $param_out_type = $param->out_type ?: $param->type;
 
                 if ($param_out_type && !$actual_type->hasMixed() && $param->location) {
-                    if (!TypeAnalyzer::isContainedBy(
+                    if (!UnionTypeComparator::isContainedBy(
                         $codebase,
                         $actual_type,
                         $param_out_type,

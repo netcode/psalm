@@ -292,6 +292,17 @@ class ArrayFunctionCallTest extends TestCase
                         return 0;
                     }',
             ],
+            'arrayShiftFunkyObjectLikeList' => [
+                '<?php
+                    /**
+                     * @param non-empty-list<string>|array{null} $arr
+                     * @return array<int, string>
+                     */
+                    function foo(array $arr) {
+                        array_shift($arr);
+                        return $arr;
+                    }'
+            ],
             'arrayPopNonEmptyAfterCountEqualsOne' => [
                 '<?php
                     /** @var array<string, int> */
@@ -765,31 +776,93 @@ class ArrayFunctionCallTest extends TestCase
             'key' => [
                 '<?php
                     $a = ["one" => 1, "two" => 3];
-                    $b = key($a);
-                    $c = $a[$b];',
+                    $b = key($a);',
                 'assertions' => [
                     '$b' => 'null|string',
-                    '$c' => 'int',
                 ],
             ],
-            'array_key_first' => [
+            'keyEmptyArray' => [
+                '<?php
+                    $a = [];
+                    $b = key($a);',
+                'assertions' => [
+                    '$b' => 'null',
+                ],
+            ],
+            'keyNonEmptyArray' => [
+                '<?php
+                    /**
+                     * @param non-empty-array $arr
+                     * @return null|array-key
+                     */
+                    function foo(array $arr) {
+                        return key($arr);
+                    }',
+            ],
+            'arrayKeyFirst' => [
+                '<?php
+                    /** @return array<string, int> */
+                    function makeArray(): array { return ["one" => 1, "two" => 3]; }
+                    $a = makeArray();
+                    $b = array_key_first($a);
+                    $c = null;
+                    if ($b !== null) {
+                        $c = $a[$b];
+                    }',
+                'assertions' => [
+                    '$b' => 'null|string',
+                    '$c' => 'int|null',
+                ],
+            ],
+            'arrayKeyFirstNonEmpty' => [
                 '<?php
                     $a = ["one" => 1, "two" => 3];
                     $b = array_key_first($a);
                     $c = $a[$b];',
                 'assertions' => [
-                    '$b' => 'null|string',
+                    '$b' => 'string',
                     '$c' => 'int',
                 ],
             ],
-            'array_key_last' => [
+            'arrayKeyFirstEmpty' => [
+                '<?php
+                    $a = [];
+                    $b = array_key_first($a);',
+                'assertions' => [
+                    '$b' => 'null'
+                ],
+            ],
+            'arrayKeyLast' => [
+                '<?php
+                    /** @return array<string, int> */
+                    function makeArray(): array { return ["one" => 1, "two" => 3]; }
+                    $a = makeArray();
+                    $b = array_key_last($a);
+                    $c = null;
+                    if ($b !== null) {
+                        $c = $a[$b];
+                    }',
+                'assertions' => [
+                    '$b' => 'null|string',
+                    '$c' => 'int|null',
+                ],
+            ],
+            'arrayKeyLastNonEmpty' => [
                 '<?php
                     $a = ["one" => 1, "two" => 3];
                     $b = array_key_last($a);
                     $c = $a[$b];',
                 'assertions' => [
-                    '$b' => 'null|string',
+                    '$b' => 'string',
                     '$c' => 'int',
+                ],
+            ],
+            'arrayKeyLastEmpty' => [
+                '<?php
+                    $a = [];
+                    $b = array_key_last($a);',
+                'assertions' => [
+                    '$b' => 'null'
                 ],
             ],
             'arrayColumnInference' => [
@@ -811,11 +884,12 @@ class ArrayFunctionCallTest extends TestCase
                     $h = array_column(makeGenericArray(), 0);
                     $i = array_column(makeShapeArray(), 0);
                     $j = array_column(makeUnionArray(), 0);
+                    $k = array_column([[0 => "test"]], 0);
                 ',
                 'assertions' => [
-                    '$a' => 'list<int>',
-                    '$b' => 'list<int>',
-                    '$c' => 'array<string, int>',
+                    '$a' => 'non-empty-list<int>',
+                    '$b' => 'non-empty-list<int>',
+                    '$c' => 'non-empty-array<string, int>',
                     '$d' => 'list<mixed>',
                     '$e' => 'list<mixed>',
                     '$f' => 'array<array-key, mixed>',
@@ -823,6 +897,7 @@ class ArrayFunctionCallTest extends TestCase
                     '$h' => 'list<mixed>',
                     '$i' => 'list<string>',
                     '$j' => 'list<mixed>',
+                    '$k' => 'non-empty-list<string>',
                 ],
             ],
             'splatArrayIntersect' => [
@@ -949,18 +1024,23 @@ class ArrayFunctionCallTest extends TestCase
                 'assertions' => [],
                 'error_levels' => ['MissingClosureReturnType', 'MixedAssignment'],
             ],
-            'arraySplice' => [
+            'arraySpliceArray' => [
                 '<?php
                     $a = [1, 2, 3];
                     $c = $a;
                     $b = ["a", "b", "c"];
-                    array_splice($a, -1, 1, $b);
-                    $d = [1, 2, 3];
-                    $e = array_splice($d, -1, 1);',
+                    array_splice($a, rand(-10, 0), rand(0, 10), $b);',
                 'assertions' => [
                     '$a' => 'non-empty-list<int|string>',
                     '$b' => 'array{string, string, string}',
                     '$c' => 'array{int, int, int}',
+                ],
+            ],
+            'arraySpliceReturn' => [
+                '<?php
+                    $d = [1, 2, 3];
+                    $e = array_splice($d, -1, 1);',
+                'assertions' => [
                     '$e' => 'array<array-key, mixed>'
                 ],
             ],

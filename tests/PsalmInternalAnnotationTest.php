@@ -117,6 +117,30 @@ class PsalmInternalAnnotationTest extends TestCase
                         }
                     }',
             ],
+            'internalClassWithPropertyFetch' => [
+                '<?php
+                    namespace A\B {
+                        /**
+                         * @internal
+                         * @psalm-internal A\B
+                         */
+                        class Foo {
+                            public int $barBar = 0;
+                        }
+
+                        function getFoo(): Foo {
+                            return new Foo();
+                        }
+                    }
+
+                    namespace A\B\C {
+                        class Bat {
+                            public function batBat(\A\B\Foo $instance): void {
+                                \A\B\getFoo()->barBar;
+                            }
+                        }
+                    }',
+            ],
             'internalClassExtendingNamespaceWithStaticCall' => [
                 '<?php
                     namespace A {
@@ -158,6 +182,26 @@ class PsalmInternalAnnotationTest extends TestCase
                         class Bat {
                             public function batBat() : void {
                                 $a = new \A\B\Foo();
+                            }
+                        }
+                    }',
+            ],
+            'internalClassWithInstanceOf' => [
+                '<?php
+                    namespace A\B {
+                        interface Bar {};
+
+                        /**
+                         * @internal
+                         * @psalm-internal A\B
+                         */
+                        class Foo { }
+                    }
+
+                    namespace A\B\C {
+                        class Bat {
+                            public function batBat(\A\B\Bar $bar) : void {
+                                $bar instanceOf \A\B\Foo;
                             }
                         }
                     }',
@@ -273,7 +317,7 @@ class PsalmInternalAnnotationTest extends TestCase
                             }
                         }
                     }',
-                'error_message' => 'The method A\B\Foo::barBar has been marked as internal to A\B',
+                'error_message' => 'The method A\B\Foo::barBar is internal to A\B',
             ],
             'internalToClassMethodWithCall' => [
                 '<?php
@@ -295,7 +339,7 @@ class PsalmInternalAnnotationTest extends TestCase
                             }
                         }
                     }',
-                'error_message' => 'The method A\B\Foo::barBar has been marked as internal to A\B\Foo',
+                'error_message' => 'The method A\B\Foo::barBar is internal to A\B\Foo',
             ],
             'internalClassWithStaticCall' => [
                 '<?php
@@ -318,6 +362,31 @@ class PsalmInternalAnnotationTest extends TestCase
                         }
                     }',
                 'error_message' => 'InternalClass',
+            ],
+            'internalClassWithPropertyFetch' => [
+                '<?php
+                    namespace A\B {
+                        /**
+                         * @internal
+                         * @psalm-internal A\B
+                         */
+                        class Foo {
+                            public int $barBar = 0;
+                        }
+
+                        function getFoo(): Foo {
+                            return new Foo();
+                        }
+                    }
+
+                    namespace A\C {
+                        class Bat {
+                            public function batBat(): void {
+                                \A\B\getFoo()->barBar;
+                            }
+                        }
+                    }',
+                'error_message' => 'A\B\Foo::$barBar is internal to A\B',
             ],
             'internalClassWithInstanceCall' => [
                 '<?php
@@ -343,7 +412,7 @@ class PsalmInternalAnnotationTest extends TestCase
                             }
                         }
                     }',
-                'error_message' => 'The method A\B\Foo::barBar has been marked as internal to A\B',
+                'error_message' => 'The method A\B\Foo::barBar is internal to A\B',
             ],
             'internalClassWithNew' => [
                 '<?php
@@ -399,7 +468,7 @@ class PsalmInternalAnnotationTest extends TestCase
                             }
                         }
                     }',
-                'error_message' => 'A\B\Foo::$foo is marked internal to A\B',
+                'error_message' => 'A\B\Foo::$foo is internal to A\B',
             ],
             'internalPropertySet' => [
                 '<?php
@@ -421,7 +490,7 @@ class PsalmInternalAnnotationTest extends TestCase
                             }
                         }
                     }',
-                'error_message' => 'A\B\Foo::$foo is marked internal to A\B',
+                'error_message' => 'A\B\Foo::$foo is internal to A\B',
             ],
             'internalClassMissingNamespace' => [
                     '<?php

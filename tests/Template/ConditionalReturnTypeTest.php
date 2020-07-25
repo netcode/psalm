@@ -588,6 +588,36 @@ class ConditionalReturnTypeTest extends TestCase
                         }
                     }'
             ],
+            'checkNullOrFalse' => [
+                '<?php
+                    /**
+                     * @template T of mixed|false|null
+                     * @param T $i
+                     * @return (T is false ? no-return : T is null ? no-return : T)
+                     * @psalm-suppress LessSpecificReturnType
+                     */
+                    function orThrow($i) {
+                        if ($i === false || $i === null) {
+                            throw new RuntimeException("Example");
+                        }
+                        return $i;
+                    }'
+            ],
+            'identicalToTrue' => [
+                '<?php
+                    class A{
+                        /**
+                         * @psalm-return ($id_only is true ? int[] : string[])
+                         */
+                        public function get_liste_tdm_by_cod_s(bool $id_only = false): array {
+                            if ($id_only === true) {
+                                return [0];
+                            }
+
+                            return [""];
+                        }
+                    }'
+            ],
         ];
     }
 }

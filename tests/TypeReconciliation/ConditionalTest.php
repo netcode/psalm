@@ -1029,16 +1029,6 @@ class ConditionalTest extends \Psalm\Tests\TestCase
                         Closure::fromCallable($f);
                     }',
             ],
-            'compareObjectLikeToArray' => [
-                '<?php
-                    /**
-                     * @param array<"from"|"to", bool> $a
-                     * @return array{from:bool, to: bool}
-                     */
-                    function foo(array $a) : array {
-                        return $a;
-                    }',
-            ],
             'dontChangeScalar' => [
                 '<?php
                     /**
@@ -3201,6 +3191,13 @@ class ConditionalTest extends \Psalm\Tests\TestCase
                         }
                     }',
                 'error_message' => 'ArgumentTypeCoercion',
+            ],
+            'getClassCannotBeStringEquals' => [
+                '<?php
+                    function foo(Exception $e) : void {
+                        if (get_class($e) == "InvalidArgumentException") {}
+                    }',
+                'error_message' => 'TypeDoesNotContainType',
             ],
         ];
     }
